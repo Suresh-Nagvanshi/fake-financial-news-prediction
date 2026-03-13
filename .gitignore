@@ -1,0 +1,12 @@
+data/raw/
+data/processed/
+*.csv
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+env/
+.DS_Store
+Thumbs.db
+*.log
