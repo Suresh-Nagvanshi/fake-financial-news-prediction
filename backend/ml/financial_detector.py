@@ -4,9 +4,15 @@ from sklearn.model_selection import train_test_split
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import PassiveAggressiveClassifier
 from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
+import joblib
+from pathlib import Path
 
 # Configure logging for group collaboration
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+
+# Get project root folder dynamically
+BASE_DIR = Path(__file__).resolve().parents[2]
+MODEL_DIR = BASE_DIR / "backend" / "models"
 
 class FinancialFakeNewsDetector:
     def __init__(self, stop_words='english', max_df=0.7):
@@ -17,7 +23,7 @@ class FinancialFakeNewsDetector:
         self.model = PassiveAggressiveClassifier(max_iter=50, random_state=42)
         self.is_trained = False
 
-    def preprocess_data(self, df, text_col='text', label_col='label'):
+    def preprocess_data(self, df, text_col='content', label_col='label'):
         """
         Cleans and splits the dataset.
         """
@@ -51,24 +57,48 @@ class FinancialFakeNewsDetector:
         
         metrics = {
             "accuracy": accuracy_score(y_test, y_pred),
-            "confusion_matrix": confusion_matrix(y_test, y_pred, labels=['Fake', 'Real']),
+            # Labels must be 0 and 1, matching how the data was processed
+            "confusion_matrix": confusion_matrix(y_test, y_pred, labels=[0, 1]),
             "report": classification_report(y_test, y_pred)
         }
         return metrics
+
+    def save_models(self):
+        """
+        Saves the trained model and vectorizer for the FastAPI backend.
+        """
+        if not self.is_trained:
+            raise Exception("Cannot save an untrained model.")
+        
+        # Ensure the backend/models directory exists
+        MODEL_DIR.mkdir(parents=True, exist_ok=True)
+        
+        model_path = MODEL_DIR / "model.pkl"
+        vectorizer_path = MODEL_DIR / "vectorizer.pkl"
+        
+        joblib.dump(self.model, model_path)
+        joblib.dump(self.vectorizer, vectorizer_path)
+        
+        logging.info(f"Model successfully saved to {model_path}")
+        logging.info(f"Vectorizer successfully saved to {vectorizer_path}")
 
     def predict_single(self, text):
         """
         Predicts a single news snippet (Useful for the UI/API).
         """
+        if not self.is_trained:
+             raise Exception("Model must be trained before prediction.")
         tfidf_input = self.vectorizer.transform([text])
         prediction = self.model.predict(tfidf_input)
         return prediction[0]
 
-# --- Example Usage for the Group ---
+# --- Execution Block ---
 if __name__ == "__main__":
-    # 1. Load Data
+    # 1. Load Data using absolute pathing
+    data_path = BASE_DIR / "data" / "processed" / "financial_news.csv"
+    
     try:
-        data = pd.read_csv('financial_news.csv') 
+        data = pd.read_csv(data_path) 
         
         # 2. Initialize Detector
         detector = FinancialFakeNewsDetector()
@@ -82,5 +112,8 @@ if __name__ == "__main__":
         print(f"\n--- Model Results ---\nAccuracy: {results['accuracy']:.2%}")
         print("\nClassification Report:\n", results['report'])
         
+        # 5. Export for FastAPI!
+        detector.save_models()
+        
     except FileNotFoundError:
-        logging.error("Dataset file not found. Please ensure 'financial_news.csv' exists.")
+        logging.error(f"Dataset not found at {data_path}. Please run filter_financial_news.py first.")
