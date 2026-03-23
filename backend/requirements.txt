@@ -2,7 +2,7 @@ numpy
 pandas
 scikit-learn
 nltk
-fastAPI
+fastapi
 pydantic
 uvicorn
 joblib
