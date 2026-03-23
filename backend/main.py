@@ -1,8 +1,10 @@
 from fastapi import FastAPI, HTTPException
+import math 
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import joblib
 from pathlib import Path
+
 
 app = FastAPI(
     title="Financial News Credibility API",
@@ -34,18 +36,23 @@ class NewsRequest(BaseModel):
 @app.post("/predict")
 async def predict_news(request: NewsRequest):
     try:
+        # 1. Vectorize the input text
         vectorized_text = vectorizer.transform([request.text])
+        
+        # 2. Generate Prediction
         prediction_num = model.predict(vectorized_text)[0]
         label = "Real" if prediction_num == 1 else "Fake"
         
-        probabilities = model.predict_proba(vectorized_text)[0]
-        confidence_score = max(probabilities) * 100
+        # 3. Calculate Confidence Score (Fix for PassiveAggressiveClassifier)
+        distance = model.decision_function(vectorized_text)[0]
+        confidence_score = (1 / (1 + math.exp(-abs(distance)))) * 100
         
         return {
             "prediction": label,
             "confidence": f"{round(confidence_score, 2)}%",
             "text_analyzed": request.text[:60] + "..."
         }
+        
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Prediction error: {str(e)}")
 
