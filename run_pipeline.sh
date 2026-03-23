@@ -1,24 +1,24 @@
 #!/bin/bash
 
-# Exit immediately if any command fails
 set -e
 
+source venv/Scripts/activate
+
 echo "======================================"
-echo "🚀 Starting ML Pipeline Automation..."
+echo "Starting ML Pipeline Automation..."
 echo "======================================"
 
-echo "\n[1/4] Merging and Cleaning Raw Data..."
+echo "[1/4] Merging and Cleaning Raw Data..."
 python backend/ml/preprocess.py
 
-echo "\n[2/4] Isolating Financial Keywords..."
+echo "[2/4] Isolating Financial Keywords..."
 python backend/ml/filter_financial_news.py
 
-echo "\n[3/4] Training Model & Exporting .pkl files..."
+echo "[3/4] Training Model & Exporting .pkl files..."
 python backend/ml/financial_detector.py
 
-echo "\n======================================"
-echo "✅ ML Pipeline Complete! Starting API..."
+echo "======================================"
+echo "ML Pipeline Complete! Starting API..."
 echo "======================================"
 
-# Start the server
 uvicorn backend.main:app --reload
