@@ -10,7 +10,7 @@ A full-stack machine learning application designed to detect market manipulation
 
 ## 🚀 Quick Start: The ML Pipeline
 
-If you are setting up the project for the first time or need to retrain the models, use the automated pipeline script. This will clean the raw data, isolate financial terminology, train the classifier, and export the `.pkl` files.
+If you are setting up the project for the first time or need to retrain the baseline models, use the automated pipeline script. This will clean the raw data, isolate financial terminology, train the classifier, and export the `.pkl` files.
 
 1. Activate your virtual environment.
 2. Run the bash script:
