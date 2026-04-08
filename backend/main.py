@@ -1,15 +1,15 @@
 from fastapi import FastAPI, HTTPException
-import math 
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-import joblib
-from pathlib import Path
+from transformers import pipeline
 
-
+# =========================
+# 🚀 FASTAPI SETUP
+# =========================
 app = FastAPI(
     title="Financial News Credibility API",
-    description="API for predicting market manipulation and fake financial news.",
-    version="1.0.0"
+    description="Detect fake financial news using DistilBERT",
+    version="2.0.0"
 )
 
 app.add_middleware(
@@ -20,42 +20,54 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-BASE_DIR = Path(__file__).resolve().parent
-MODEL_PATH = BASE_DIR / "models" / "model.pkl"
-VECTORIZER_PATH = BASE_DIR / "models" / "vectorizer.pkl"
+# =========================
+# 🤖 LOAD DISTILBERT MODEL
+# =========================
+MODEL_PATH = "D:/distilbert_model"
+
+print("🔄 Loading DistilBERT model...")
 
 try:
-    model = joblib.load(MODEL_PATH)
-    vectorizer = joblib.load(VECTORIZER_PATH)
+    classifier = pipeline(
+        "text-classification",
+        model=MODEL_PATH,
+        tokenizer=MODEL_PATH
+    )
+    print("✅ Model loaded successfully!")
 except Exception as e:
-    pass
+    print("❌ Model loading failed:", e)
 
+# =========================
+# 📩 REQUEST MODEL
+# =========================
 class NewsRequest(BaseModel):
     text: str
 
+# =========================
+# 🔮 PREDICTION API
+# =========================
 @app.post("/predict")
 async def predict_news(request: NewsRequest):
     try:
-        # 1. Vectorize the input text
-        vectorized_text = vectorizer.transform([request.text])
-        
-        # 2. Generate Prediction
-        prediction_num = model.predict(vectorized_text)[0]
-        label = "Real" if prediction_num == 1 else "Fake"
-        
-        # 3. Calculate Confidence Score (Fix for PassiveAggressiveClassifier)
-        distance = model.decision_function(vectorized_text)[0]
-        confidence_score = (1 / (1 + math.exp(-abs(distance)))) * 100
-        
+        result = classifier(request.text[:512])[0]
+
+        label = result['label']
+        confidence = result['score'] * 100
+
+        final_label = "Real" if label == "LABEL_1" else "Fake"
+
         return {
-            "prediction": label,
-            "confidence": f"{round(confidence_score, 2)}%",
+            "prediction": final_label,
+            "confidence": f"{round(confidence, 2)}%",
             "text_analyzed": request.text[:60] + "..."
         }
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Prediction error: {str(e)}")
 
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# =========================
+# ❤️ HEALTH CHECK
+# =========================
 @app.get("/health")
 async def health_check():
-    return {"status": "Operational", "models_loaded": True}
+    return {"status": "Operational", "model": "DistilBERT"}

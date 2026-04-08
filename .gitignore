@@ -1,12 +1,67 @@
-data/raw/
-data/processed/
+# -------------------------
+# DATASETS (VERY IMPORTANT)
+# -------------------------
+data/
 *.csv
+*.tsv
+*.json
+
+# -------------------------
+# MACHINE LEARNING MODELS
+# -------------------------
+backend/models/
+*.pkl
+*.joblib
+*.h5
+*.pt
+*.pth
+*.bin
+*.safetensors
+
+# -------------------------
+# HUGGINGFACE / TRANSFORMERS
+# -------------------------
+*.ckpt
+*.onnx
+*.pb
+
+# -------------------------
+# PYTHON CACHE
+# -------------------------
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
+
+# -------------------------
+# VIRTUAL ENVIRONMENTS
+# -------------------------
 venv/
 env/
+.venv/
+
+# -------------------------
+# LOGS & TEMP FILES
+# -------------------------
+*.log
+*.tmp
+*.temp
+
+# -------------------------
+# OS FILES
+# -------------------------
 .DS_Store
 Thumbs.db
-*.log
+
+# -------------------------
+# FRONTEND (React/Vite)
+# -------------------------
+node_modules/
+dist/
+build/
+
+# -------------------------
+# IDE FILES
+# -------------------------
+.vscode/
+.idea/
