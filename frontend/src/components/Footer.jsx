@@ -10,7 +10,7 @@ function Footer() {
   const techStack = ["React.js", "FastAPI", "DistilBERT", "Tailwind CSS"];
 
   return (
-    <footer className="border-t border-white/10 mt-20">
+    <footer className="border-t border-white/40 mt-20">
       <div className="w-full px-10 py-10">
         {/* Top row — 3 columns */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-10 mb-8">
