@@ -1,7 +1,7 @@
 # 📈 Financial Fake News & Market Manipulation Detector
 
 A full-stack AI application that detects fake financial news using Natural Language Processing (NLP).  
-The system uses a **DistilBERT transformer model** to analyze financial text and predict whether the news is **Real or Fake**, along with a confidence score.
+The system uses a DistilBERT transformer model to analyze financial text and predict whether the news is **Real or Fake**, along with a confidence score.
 
 ---
 
