@@ -13,7 +13,7 @@ os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
 app = FastAPI(
     title="Financial News Credibility API",
     description="Detect fake financial news using DistilBERT + Sentiment + Rule-based filtering",
-    version="4.0.0"
+    version="4.1.0"
 )
 
 app.add_middleware(
@@ -25,11 +25,13 @@ app.add_middleware(
 )
 
 # =========================
-# 🤖 LOAD MODELS
+# 📍 PATH HANDLING (IMPORTANT FIX)
 # =========================
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 MODEL_PATH = os.getenv(
     "MODEL_PATH",
-    "models/distilbert_model"
+    os.path.join(BASE_DIR, "models", "distilbert_model")
 )
 
 print("🔄 Loading DistilBERT model from:", MODEL_PATH)
@@ -37,6 +39,9 @@ print("🔄 Loading DistilBERT model from:", MODEL_PATH)
 classifier = None
 sentiment_analyzer = None
 
+# =========================
+# 🤖 LOAD FAKE NEWS MODEL
+# =========================
 try:
     print("📂 Path exists:", os.path.exists(MODEL_PATH))
 
@@ -73,6 +78,17 @@ class NewsRequest(BaseModel):
 
 
 # =========================
+# 🏠 ROOT ENDPOINT (FIXES 404)
+# =========================
+@app.get("/")
+async def root():
+    return {
+        "message": "Financial News Credibility API is running 🚀",
+        "docs": "/docs"
+    }
+
+
+# =========================
 # 🔮 PREDICTION API
 # =========================
 @app.post("/predict")
@@ -95,7 +111,7 @@ async def predict_news(request: NewsRequest):
 
         credibility = "Real" if label == "LABEL_0" else "Fake"
 
-        # 🚨 RULE-BASED OVERRIDE (SMART BOOST)
+        # 🚨 RULE-BASED OVERRIDE
         fake_keywords = [
             "secretly", "overnight", "guaranteed",
             "no risk", "double money", "100% return",
