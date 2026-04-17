@@ -4,10 +4,11 @@ export default {
   theme: {
     extend: {
       colors: {
-        background: "#000000",
-        card: "#273F4F",
+        background: "#020617", // slate-950
+        card: "rgba(15, 23, 42, 0.6)", // trans-slate-900
+        cardBorder: "rgba(255, 255, 255, 0.05)",
         primary: "#FE7743",
-        textBase: "#EFEEEA",
+        textBase: "#f8fafc",
       },
       fontFamily: {
         heading: ["'Plus Jakarta Sans'", "sans-serif"],

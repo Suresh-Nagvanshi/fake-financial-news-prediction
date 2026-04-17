@@ -10,18 +10,19 @@ function Navbar() {
     }`;
 
   return (
-    <nav className="sticky top-0 z-50 bg-background border-b border-white/40">
-      <div className="w-full pl-10 pr-24 h-16 flex items-center justify-between">
+    <nav className="sticky top-0 z-50 bg-card/95 backdrop-blur-3xl border-b-2 border-primary/30 shadow-[0_10px_40px_rgba(0,0,0,0.5)]">
+      {/* Subtle Bottom Glow emitting from the orange border */}
+      <div className="absolute bottom-[-50px] left-1/2 -translate-x-1/2 w-[50%] h-[100px] bg-primary/20 blur-[80px] pointer-events-none"></div>
+      
+      <div className="w-full pl-10 pr-24 h-16 flex items-center justify-between relative z-10">
         {/* Brand + Logo — far left */}
         <NavLink to="/" className="flex items-center gap-2.5">
-          {
-            /* ── Logo slot ─ */
-            <img
-              src="/logo.png"
-              alt="FinVerify logo"
-              className="w-7 h-7 object-contain"
-            />
-          }
+          <div className="flex items-center gap-1.5 shrink-0">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M11 6L3 12L11 18Z" fill="#FE7743"/>
+              <path d="M13 6L21 12L13 18Z" fill="#FE7743"/>
+            </svg>
+          </div>
           <span className="font-heading text-xl font-bold text-textBase tracking-tight">
             Fin<span className="text-primary">Verify</span>
           </span>

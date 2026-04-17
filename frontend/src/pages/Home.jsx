@@ -98,7 +98,7 @@ function Home() {
         ].map((stat) => (
           <div
             key={stat.label}
-            className="bg-card rounded-xl px-4 py-3 text-center"
+            className="bg-card backdrop-blur-xl border border-cardBorder shadow-2xl rounded-xl px-4 py-3 text-center transition-transform hover:-translate-y-1 duration-300"
           >
             <p className="text-textBase font-bold text-lg leading-tight">
               {stat.value}
@@ -111,7 +111,7 @@ function Home() {
       </div>
 
       {/* ── Analyzer Card ── */}
-      <div className="bg-card rounded-2xl p-6">
+      <div className="bg-card backdrop-blur-2xl border border-cardBorder shadow-2xl shadow-primary/5 rounded-2xl p-6">
         <label
           htmlFor="news-input"
           className="block text-[0.7rem] font-semibold tracking-[0.12em] uppercase text-textBase/40 mb-3"
@@ -215,7 +215,7 @@ function Home() {
                 setResult(null);
                 setError("");
               }}
-              className="bg-card border border-white/8 hover:border-primary/40 rounded-xl px-4 py-3 text-left transition-all duration-150 group"
+              className="bg-card/50 backdrop-blur-sm border border-cardBorder hover:border-primary/40 rounded-xl px-4 py-3 text-left transition-all duration-300 group hover:shadow-[0_4px_20px_rgba(254,119,67,0.1)]"
             >
               <span className="text-[0.65rem] font-semibold tracking-widest uppercase text-primary/70 group-hover:text-primary transition-colors">
                 {sample.label}
@@ -234,12 +234,12 @@ function Home() {
           <p className="text-[0.7rem] font-semibold tracking-[0.12em] uppercase text-textBase/30 mb-3">
             Recent Predictions
           </p>
-          <div className="bg-card rounded-2xl overflow-hidden">
+          <div className="bg-card/80 backdrop-blur-lg border border-cardBorder shadow-xl rounded-2xl overflow-hidden">
             {history.map((item, i) => (
               <div
                 key={i}
-                className={`flex items-center justify-between px-4 py-3 gap-4 ${
-                  i !== history.length - 1 ? "border-b border-white/6" : ""
+                className={`flex items-center justify-between px-4 py-3 gap-4 hover:bg-white/5 transition-colors duration-200 ${
+                  i !== history.length - 1 ? "border-b border-cardBorder" : ""
                 }`}
               >
                 <p className="text-textBase/55 text-xs leading-relaxed flex-1 truncate">
