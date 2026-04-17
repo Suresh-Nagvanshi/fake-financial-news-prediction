@@ -3,6 +3,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from transformers import pipeline
 import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Suppress HuggingFace warning (Windows symlink)
 os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
@@ -25,7 +29,7 @@ app.add_middleware(
 )
 
 # =========================
-# 📍 PATH HANDLING (IMPORTANT FIX)
+# PATH HANDLING (IMPORTANT FIX)
 # =========================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -34,7 +38,7 @@ MODEL_PATH = os.getenv(
     "backend/models/distilbert_model"
 )
 
-print("🔄 Loading DistilBERT model from:", MODEL_PATH)
+print("--- Loading DistilBERT model from:", MODEL_PATH)
 
 classifier = None
 sentiment_analyzer = None
@@ -43,7 +47,7 @@ sentiment_analyzer = None
 # 🤖 LOAD FAKE NEWS MODEL
 # =========================
 try:
-    print("📂 Path exists:", os.path.exists(MODEL_PATH))
+    print("[INFO] Path exists:", os.path.exists(MODEL_PATH))
 
     classifier = pipeline(
         "text-classification",
@@ -51,10 +55,10 @@ try:
         tokenizer=MODEL_PATH
     )
 
-    print("✅ Fake news model loaded!")
+    print("[SUCCESS] Fake news model loaded!")
 
 except Exception as e:
-    print("❌ Fake news model failed:", str(e))
+    print("[ERROR] Fake news model failed:", str(e))
 
 
 # =========================
@@ -65,9 +69,9 @@ try:
         "sentiment-analysis",
         model="distilbert-base-uncased-finetuned-sst-2-english"
     )
-    print("✅ Sentiment model loaded!")
+    print("[SUCCESS] Sentiment model loaded!")
 except Exception as e:
-    print("❌ Sentiment model failed:", str(e))
+    print("[ERROR] Sentiment model failed:", str(e))
 
 
 # =========================

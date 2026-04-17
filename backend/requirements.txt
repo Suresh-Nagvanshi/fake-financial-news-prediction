@@ -15,3 +15,4 @@ accelerate
 fastapi
 pydantic
 uvicorn
+python-dotenv
