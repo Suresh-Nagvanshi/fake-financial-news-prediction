@@ -29,7 +29,7 @@ app.add_middleware(
 # =========================
 MODEL_PATH = os.getenv(
     "MODEL_PATH",
-    "models/distilbert_model"
+    "backend/models/distilbert_model"
 )
 
 print("🔄 Loading DistilBERT model from:", MODEL_PATH)
