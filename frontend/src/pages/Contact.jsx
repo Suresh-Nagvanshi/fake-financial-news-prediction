@@ -4,8 +4,8 @@ import { useForm, ValidationError } from '@formspree/react';
 function Contact() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   
-  // Initialize Formspree hook using the provided key
-  const [state, handleSubmit] = useForm("c2463161a0944840837f6ae2bb0ef9f6");
+  // Initialize Formspree hook using the form name
+  const [state, handleSubmit] = useForm("contact");
 
   return (
     <main className="min-h-screen bg-background relative overflow-hidden flex flex-col items-center justify-center pt-24 pb-32">
