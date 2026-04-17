@@ -1,6 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useForm, ValidationError } from '@formspree/react';
 
 function Contact() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  // Initialize Formspree hook using the provided key
+  const [state, handleSubmit] = useForm("c2463161a0944840837f6ae2bb0ef9f6");
+
   return (
     <main className="min-h-screen bg-background relative overflow-hidden flex flex-col items-center justify-center pt-24 pb-32">
       {/* Dynamic Background Blur Blobs */}
@@ -38,15 +44,18 @@ function Contact() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-12">
-            {/* Email Card */}
-            <div className="bg-card/20 backdrop-blur-2xl border border-white/5 rounded-3xl p-8 hover:bg-card/40 hover:border-primary/30 transition-all duration-500 group shadow-xl hover:shadow-[0_20px_40px_rgba(254,119,67,0.1)] hover:-translate-y-2 cursor-pointer">
+            {/* Actionable General Inquiries Card */}
+            <div 
+               onClick={() => setIsModalOpen(true)}
+               className="bg-card/20 backdrop-blur-2xl border border-white/5 rounded-3xl p-8 hover:bg-card/40 hover:border-primary/30 transition-all duration-500 group shadow-xl hover:shadow-[0_20px_40px_rgba(254,119,67,0.1)] hover:-translate-y-2 cursor-pointer"
+            >
                <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-6 text-primary group-hover:bg-primary group-hover:text-white transition-all duration-500 shadow-[0_0_15px_rgba(254,119,67,0.1)] group-hover:shadow-[0_0_25px_rgba(254,119,67,0.5)]">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                   </svg>
                </div>
                <span className="block text-textBase/40 text-[0.7rem] font-bold tracking-widest uppercase mb-1">General Inquiries</span>
-               <a href="mailto:team@financial-ai.app" className="text-textBase font-medium text-lg hover:text-primary transition-colors">team@financial-ai.app</a>
+               <span className="text-textBase font-medium text-lg hover:text-primary transition-colors block">Send a Query &rarr;</span>
             </div>
 
             {/* Location Card */}
@@ -63,10 +72,8 @@ function Contact() {
           </div>
 
           <div className="relative p-8 rounded-3xl overflow-hidden group">
-             {/* Gradient Border Wrap */}
              <div className="absolute inset-0 bg-gradient-to-r from-card to-white/5 pointer-events-none" />
              <div className="absolute inset-0 border border-white/5 rounded-3xl pointer-events-none" />
-             
              <div className="relative z-10">
                <h3 className="font-heading font-semibold text-xl text-textBase mb-6 flex items-center gap-3">
                  <span className="w-2 h-6 rounded-full bg-gradient-to-b from-primary to-cyan-500" /> Executive Team
@@ -84,8 +91,75 @@ function Contact() {
              </div>
           </div>
         </div>
-
       </div>
+
+      {/* Inquiry Form Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onClick={() => setIsModalOpen(false)} />
+          <div className="relative bg-card w-full max-w-lg rounded-3xl border border-white/10 p-8 shadow-2xl animate-fade-in-up">
+            <button 
+              onClick={() => setIsModalOpen(false)}
+              className="absolute top-5 right-5 text-textBase/40 hover:text-textBase transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <h2 className="text-2xl font-bold text-textBase mb-2 font-heading">Submit Inquiry</h2>
+            <p className="text-textBase/50 text-sm mb-6">Send your query directly to our secure inbox via Formspree.</p>
+            
+            {state.succeeded ? (
+              <div className="bg-green-500/10 border border-green-500/30 text-green-400 p-4 rounded-xl flex items-center gap-3">
+                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                 </svg>
+                 <span>Your inquiry has been posted successfully! We will get back to you soon.</span>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+                <div>
+                  <label htmlFor="email" className="block text-xs font-semibold tracking-widest text-textBase/60 uppercase mb-2">
+                    Email Address
+                  </label>
+                  <input
+                    id="email"
+                    type="email" 
+                    name="email"
+                    required
+                    className="w-full bg-background/50 border border-white/10 rounded-xl px-4 py-3 text-textBase focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-colors"
+                    placeholder="you@domain.com"
+                  />
+                  <ValidationError prefix="Email" field="email" errors={state.errors} className="text-red-400 text-sm mt-1" />
+                </div>
+                <div>
+                  <label htmlFor="message" className="block text-xs font-semibold tracking-widest text-textBase/60 uppercase mb-2">
+                    Your Query
+                  </label>
+                  <textarea
+                    id="message"
+                    name="message"
+                    required
+                    rows="4"
+                    className="w-full bg-background/50 border border-white/10 rounded-xl px-4 py-3 text-textBase focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-colors resize-none"
+                    placeholder="How can we help you?"
+                  />
+                  <ValidationError prefix="Message" field="message" errors={state.errors} className="text-red-400 text-sm mt-1" />
+                </div>
+                <input type="hidden" name="Project ID" value="2981684724860189987" />
+                <button 
+                  type="submit" 
+                  disabled={state.submitting}
+                  className="mt-2 w-full bg-primary hover:bg-orange-500 text-white font-bold py-3 px-6 rounded-xl shadow-[0_0_20px_rgba(254,119,67,0.3)] transition-all flex justify-center items-center gap-2 hover:-translate-y-0.5 disabled:opacity-50"
+                >
+                  {state.submitting ? 'Sending...' : 'Post Query'}
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
     </main>
   );
 }
