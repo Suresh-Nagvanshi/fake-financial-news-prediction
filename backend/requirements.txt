@@ -1,8 +1,17 @@
+# Core Data & ML
 numpy
 pandas
 scikit-learn
 nltk
+joblib
+
+# Deep Learning
+torch
+transformers
+datasets
+accelerate
+
+# Backend API
 fastapi
 pydantic
 uvicorn
-joblib
