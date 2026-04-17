@@ -35,7 +35,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 MODEL_PATH = os.getenv(
     "MODEL_PATH",
-    "backend/models/distilbert_model"
+    os.path.join(BASE_DIR, "models", "distilbert_model")
 )
 
 print("--- Loading DistilBERT model from:", MODEL_PATH)
