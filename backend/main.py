@@ -4,11 +4,14 @@ from pydantic import BaseModel
 from transformers import pipeline
 import os
 from dotenv import load_dotenv
+from backend.config.db import contact_collection
+from backend.model.contact import Contact
+from datetime import datetime
 
-# Load environment variables from .env file
+# =========================
+# ENV SETUP
+# =========================
 load_dotenv()
-
-# Suppress HuggingFace warning (Windows symlink)
 os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
 
 # =========================
@@ -17,7 +20,7 @@ os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
 app = FastAPI(
     title="Financial News Credibility API",
     description="Detect fake financial news using DistilBERT + Sentiment + Rule-based filtering",
-    version="4.1.0"
+    version="4.2.0"
 )
 
 app.add_middleware(
@@ -29,7 +32,7 @@ app.add_middleware(
 )
 
 # =========================
-# PATH HANDLING (IMPORTANT FIX)
+# PATH SETUP
 # =========================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -44,26 +47,18 @@ classifier = None
 sentiment_analyzer = None
 
 # =========================
-# 🤖 LOAD FAKE NEWS MODEL
+# 🤖 LOAD MODELS
 # =========================
 try:
-    print("[INFO] Path exists:", os.path.exists(MODEL_PATH))
-
     classifier = pipeline(
         "text-classification",
         model=MODEL_PATH,
         tokenizer=MODEL_PATH
     )
-
     print("[SUCCESS] Fake news model loaded!")
-
 except Exception as e:
     print("[ERROR] Fake news model failed:", str(e))
 
-
-# =========================
-# 😊 LOAD SENTIMENT MODEL
-# =========================
 try:
     sentiment_analyzer = pipeline(
         "sentiment-analysis",
@@ -75,14 +70,14 @@ except Exception as e:
 
 
 # =========================
-# 📩 REQUEST MODEL
+# 📩 REQUEST MODELS
 # =========================
 class NewsRequest(BaseModel):
     text: str
 
 
 # =========================
-# 🏠 ROOT ENDPOINT (FIXES 404)
+# 🏠 ROOT
 # =========================
 @app.get("/")
 async def root():
@@ -108,14 +103,14 @@ async def predict_news(request: NewsRequest):
         text_input = request.text[:512]
         text_lower = text_input.lower()
 
-        # 🔮 ML Prediction
+        # ML Prediction
         result = classifier(text_input)[0]
         label = result['label']
         confidence = result['score'] * 100
 
         credibility = "Real" if label == "LABEL_0" else "Fake"
 
-        # 🚨 RULE-BASED OVERRIDE
+        # Rule-based override
         fake_keywords = [
             "secretly", "overnight", "guaranteed",
             "no risk", "double money", "100% return",
@@ -125,7 +120,7 @@ async def predict_news(request: NewsRequest):
         if any(word in text_lower for word in fake_keywords):
             credibility = "Fake"
 
-        # 😊 Sentiment Analysis
+        # Sentiment
         sentiment_result = sentiment_analyzer(text_input)[0]
         sentiment = sentiment_result['label']
 
@@ -135,6 +130,23 @@ async def predict_news(request: NewsRequest):
             "sentiment": sentiment,
             "text_analyzed": text_input[:60] + "..."
         }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# =========================
+# 📬 CONTACT API (NEW)
+# =========================
+@app.post("/contact")
+async def submit_contact(contact: Contact):
+    try:
+        data = contact.dict()
+        data["created_at"] = datetime.utcnow()
+
+        contact_collection.insert_one(data)
+
+        return {"message": "Query submitted successfully"}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
