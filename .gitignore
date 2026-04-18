@@ -6,6 +6,15 @@ data/
 *.tsv
 *.json
 
+
+# -------------------------
+# ENV FILES (IMPORTANT)
+# -------------------------
+.env
+.env.*
+backend/.env
+frontend/.env
+
 # -------------------------
 # MACHINE LEARNING MODELS
 # -------------------------
