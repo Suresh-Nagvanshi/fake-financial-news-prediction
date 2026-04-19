@@ -17,5 +17,10 @@ pydantic
 uvicorn
 python-dotenv
 email-validator
+
+# Auth & Security
 argon2-cffi
 python-jose[cryptography]
+
+# Database
+pymongo
