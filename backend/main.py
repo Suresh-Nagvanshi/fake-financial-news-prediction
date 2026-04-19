@@ -4,12 +4,18 @@ from typing import Optional
 from pydantic import BaseModel
 from dotenv import load_dotenv
 from datetime import datetime
+import requests
+import os
+import re
+from functools import lru_cache
 
 # PASSWORD HASHING
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError, InvalidHash
 
-# DB IMPORT (Dual environment support)
+# =========================
+# DB IMPORT (Dual support)
+# =========================
 try:
     from config.db import contact_collection, user_collection, history_collection
     from model.contact import Contact
@@ -24,13 +30,20 @@ except ModuleNotFoundError:
 # =========================
 load_dotenv()
 
+HF_API_KEY = os.getenv("HF_API_KEY")
+
+MODEL_URL = "https://api-inference.huggingface.co/models/SureshNagvanshi/finverify-model"
+
+headers = {
+    "Authorization": f"Bearer {HF_API_KEY}"
+}
+
 # =========================
 # FASTAPI SETUP
 # =========================
 app = FastAPI(
     title="Financial News Credibility API",
-    description="Lightweight deployment version",
-    version="10.0.0"
+    version="15.0.0"
 )
 
 # =========================
@@ -55,10 +68,10 @@ app.add_middleware(
 # =========================
 ph = PasswordHasher()
 
-def hash_password(password: str) -> str:
+def hash_password(password: str):
     return ph.hash(password)
 
-def verify_password(plain_password: str, hashed_password: str) -> bool:
+def verify_password(plain_password: str, hashed_password: str):
     try:
         ph.verify(hashed_password, plain_password)
         return True
@@ -73,6 +86,56 @@ class NewsRequest(BaseModel):
     email: Optional[str] = None
 
 # =========================
+# 🔥 CACHED HF CALL
+# =========================
+@lru_cache(maxsize=100)
+def cached_prediction(text: str):
+    response = requests.post(
+        MODEL_URL,
+        headers=headers,
+        json={"inputs": text},
+        timeout=6
+    )
+    return response.json()
+
+# =========================
+# 🔥 STRONG RULE ENGINE
+# =========================
+def rule_based_check(text: str):
+    text_lower = text.lower()
+
+    # 🔥 SUPER STRONG REPO RATE CHECK
+    if re.search(r"\brepo\b", text_lower):
+        numbers = re.findall(r"\d+\.?\d*", text_lower)
+
+        for num in numbers:
+            try:
+                value = float(num)
+
+                # 🚨 HARD LIMIT: repo rates above 20 are unrealistic in this context
+                if value >= 20:
+                    print("🚨 RULE: Unrealistic repo rate detected:", value)
+                    return "Fake"
+
+            except ValueError:
+                continue
+
+    # 🚨 SCAM DETECTION
+    scam_keywords = [
+        "guaranteed",
+        "no risk",
+        "double money",
+        "100% return",
+        "overnight profit"
+    ]
+
+    if any(k in text_lower for k in scam_keywords):
+        print("🚨 RULE: Scam keyword detected")
+        return "Fake"
+
+    return None
+
+# =========================
 # ROOT
 # =========================
 @app.get("/")
@@ -80,7 +143,7 @@ async def root():
     return {"message": "API running 🚀"}
 
 # =========================
-# PREDICT API
+# PREDICT
 # =========================
 @app.post("/predict")
 async def predict_news(request: NewsRequest):
@@ -90,118 +153,131 @@ async def predict_news(request: NewsRequest):
         if not text.strip():
             raise HTTPException(status_code=400, detail="Text cannot be empty")
 
-        email = request.email
+        print("\n📩 INPUT:", text)
 
-        fake_keywords = [
-            "secretly", "overnight", "guaranteed",
-            "no risk", "double money", "100% return"
-        ]
+        # 🔥 STEP 1: RULE FIRST (FORCED)
+        rule_result = rule_based_check(text)
 
-        credibility = "Fake" if any(k in text.lower() for k in fake_keywords) else "Real"
+        print("⚙️ RULE RESULT:", rule_result)
 
-        confidence = 85 if credibility == "Fake" else 75
-        sentiment = "NEGATIVE" if credibility == "Fake" else "POSITIVE"
+        if rule_result:
+            output = {
+                "prediction": rule_result,
+                "confidence": 98,
+                "sentiment": "NEGATIVE"
+            }
 
-        result = {
+            if request.email:
+                history_collection.insert_one({
+                    "email": request.email,
+                    "text": text,
+                    **output,
+                    "created_at": datetime.utcnow()
+                })
+
+            return output
+
+        # 🔥 STEP 2: HF MODEL
+        result = cached_prediction(text)
+
+        print("🤖 HF RESPONSE:", result)
+
+        if isinstance(result, dict) and "error" in result:
+            return {
+                "prediction": "Model Loading",
+                "confidence": 0,
+                "sentiment": "N/A"
+            }
+
+        try:
+            label = result[0][0]["label"]
+            score = result[0][0]["score"]
+        except:
+            return {
+                "prediction": "Error",
+                "confidence": 0,
+                "sentiment": "N/A"
+            }
+
+        credibility = "Fake" if "FAKE" in label.upper() else "Real"
+
+        output = {
             "prediction": credibility,
-            "confidence": confidence,
-            "sentiment": sentiment
+            "confidence": round(score * 100, 2),
+            "sentiment": "N/A"
         }
 
-        if email:
+        if request.email:
             history_collection.insert_one({
-                "email": email,
+                "email": request.email,
                 "text": text,
-                **result,
+                **output,
                 "created_at": datetime.utcnow()
             })
 
-        return result
+        return output
 
-    except HTTPException:
-        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 # =========================
-# HISTORY API
+# HISTORY
 # =========================
 @app.get("/history/{email}")
 async def get_history(email: str):
-    try:
-        data = list(history_collection.find({"email": email}, {"_id": 0}))
-        return data[::-1]
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    data = list(history_collection.find({"email": email}, {"_id": 0}))
+    return data[::-1]
 
 # =========================
-# CONTACT API
+# CONTACT
 # =========================
 @app.post("/contact")
 async def submit_contact(contact: Contact):
-    try:
-        data = contact.dict()
-        data["created_at"] = datetime.utcnow()
-
-        contact_collection.insert_one(data)
-
-        return {"message": "Query submitted successfully"}
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    data = contact.dict()
+    data["created_at"] = datetime.utcnow()
+    contact_collection.insert_one(data)
+    return {"message": "Query submitted successfully"}
 
 # =========================
-# REGISTER API
+# REGISTER
 # =========================
 @app.post("/register")
 async def register_user(user: UserRegister):
-    try:
-        if user_collection.find_one({"email": user.email}):
-            raise HTTPException(status_code=400, detail="User already exists")
+    if user_collection.find_one({"email": user.email}):
+        raise HTTPException(status_code=400, detail="User already exists")
 
-        user_collection.insert_one({
-            "name": user.name,
-            "email": user.email,
-            "password": hash_password(user.password),
-            "created_at": datetime.utcnow()
-        })
+    user_collection.insert_one({
+        "name": user.name,
+        "email": user.email,
+        "password": hash_password(user.password),
+        "created_at": datetime.utcnow()
+    })
 
-        return {"message": "User registered successfully"}
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    return {"message": "User registered successfully"}
 
 # =========================
-# LOGIN API
+# LOGIN
 # =========================
 @app.post("/login")
 async def login_user(user: UserLogin):
-    try:
-        db_user = user_collection.find_one({"email": user.email})
+    db_user = user_collection.find_one({"email": user.email})
 
-        if not db_user:
-            raise HTTPException(status_code=400, detail="Invalid email")
+    if not db_user:
+        raise HTTPException(status_code=400, detail="Invalid email")
 
-        if not verify_password(user.password, db_user["password"]):
-            raise HTTPException(status_code=400, detail="Invalid password")
+    if not verify_password(user.password, db_user["password"]):
+        raise HTTPException(status_code=400, detail="Invalid password")
 
-        return {
-            "message": "Login successful",
-            "user": {
-                "name": db_user["name"],
-                "email": db_user["email"]
-            }
+    return {
+        "message": "Login successful",
+        "user": {
+            "name": db_user["name"],
+            "email": db_user["email"]
         }
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    }
 
 # =========================
-# HEALTH CHECK
+# HEALTH
 # =========================
 @app.get("/health")
 async def health():
