@@ -2,7 +2,7 @@ import os
 from pymongo import MongoClient
 from dotenv import load_dotenv
 from pathlib import Path
-from backend.model.contact import Contact
+from model.contact import Contact
 
 # 🔥 Load .env from ROOT (IMPORTANT FIX)
 BASE_DIR = Path(__file__).resolve().parents[2]
