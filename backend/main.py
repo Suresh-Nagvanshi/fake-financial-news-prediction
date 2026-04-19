@@ -32,9 +32,18 @@ app = FastAPI(
     openapi_url="/openapi.json"
 )
 
+# =========================
+# ✅ CORS CONFIG (IMPORTANT)
+# =========================
+origins = [
+    "http://localhost:3000",   # local frontend
+    "http://localhost:5173",   # vite frontend
+    "*"  # keep for now (we will restrict later after deploy)
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -56,10 +65,8 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
         return False
 
 # =========================
-# ⚠️ MODEL DISABLED (IMPORTANT)
+# ⚠️ MODEL DISABLED
 # =========================
-# Reason: Render free tier (512MB RAM) cannot load transformers models
-
 classifier = None
 sentiment_analyzer = None
 
@@ -80,7 +87,7 @@ async def root():
     return {"message": "API running 🚀", "mode": "lightweight"}
 
 # =========================
-# PREDICT API (DUMMY VERSION)
+# PREDICT API
 # =========================
 @app.post("/predict")
 async def predict_news(request: NewsRequest):
@@ -88,7 +95,6 @@ async def predict_news(request: NewsRequest):
         text = request.text[:512]
         email = request.email
 
-        # 🔥 SIMPLE RULE-BASED LOGIC
         text_lower = text.lower()
 
         fake_keywords = [
@@ -207,4 +213,3 @@ async def health():
         "status": "OK",
         "model_loaded": False
     }
-
