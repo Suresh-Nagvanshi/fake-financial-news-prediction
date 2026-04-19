@@ -1,35 +1,46 @@
 # 📈 Financial Fake News & Market Manipulation Detector
 
-A full-stack AI application that detects fake financial news using Natural Language Processing (NLP).
-The system uses a DistilBERT transformer model to analyze financial text and predict whether the news is **Real or Fake**, along with a confidence score.
+A full-stack AI-powered web application that detects **fake financial news** using Natural Language Processing (NLP).
+The system leverages a fine-tuned **DistilBERT transformer model** to classify financial text as **Real or Fake**, along with a confidence score and sentiment analysis.
 
 ---
 
-## 🧠 Key Features
+## 🚀 Overview
+
+Financial misinformation can lead to **market manipulation and investor losses**. This project provides an intelligent system to **analyze financial news credibility in real-time**, helping users make informed decisions.
+
+---
+
+## 🧠 Features
 
 * 🔍 Detect fake financial news using AI
-* 🤖 Transformer-based model (DistilBERT)
+* 🤖 Transformer-based NLP model (DistilBERT)
 * ⚡ Real-time predictions via FastAPI
-* 🌐 Interactive React frontend
-* 📊 Confidence score display
-* 🧪 Swagger API testing support
-* 💡 Scalable architecture (ready for DB + caching)
+* 📊 Confidence score + sentiment analysis
+* 🧾 User authentication (Login/Register)
+* 📁 Search history stored in MongoDB
+* 🔐 Protected dashboard routes
+* 🌐 Interactive React frontend (Vite)
+* 🧪 Swagger API documentation (`/docs`)
+* 🧩 Modular & scalable architecture
 
 ---
 
-## 🏗 System Architecture
+## 🏗️ System Architecture
 
-| Layer    | Technology                |
-| -------- | ------------------------- |
-| Frontend | React.js (Vite)           |
-| Backend  | FastAPI (Python)          |
-| ML Model | DistilBERT (Transformers) |
-| Data     | Financial news dataset    |
+| Layer    | Technology                    |
+| -------- | ----------------------------- |
+| Frontend | React.js (Vite, Tailwind CSS) |
+| Backend  | FastAPI (Python)              |
+| ML Model | DistilBERT (HuggingFace)      |
+| Database | MongoDB                       |
+| Auth     | Argon2 Password Hashing       |
 
 ---
 
 ## 📂 Project Structure
 
+```
 fake-financial-news-prediction/
 │
 ├── backend/
@@ -38,23 +49,40 @@ fake-financial-news-prediction/
 │   │   ├── filter_financial_news.py
 │   │   ├── distilbert_trainer.py
 │   │
-│   ├── models/              # ignored in git
+│   ├── config/
+│   │   └── db.py
+│   ├── model/
+│   │   ├── user.py
+│   │   ├── contact.py
+│   │
+│   ├── models/                # (ignored in git)
 │   ├── main.py
 │   └── requirements.txt
 │
-├── data/                   # ignored in git
-│   ├── raw/
-│   └── processed/
-│
 ├── frontend/
 │   ├── src/
+│   │   ├── components/
+│   │   ├── pages/
+│   │   └── App.jsx
 │   ├── public/
 │   └── package.json
 │
-├── notebooks/
-├── tests/
-├── run_pipeline.sh
-└── README.md
+├── data/                     # (ignored)
+├── .gitignore
+├── README.md
+└── run_pipeline.sh
+```
+
+---
+
+## ⚙️ Prerequisites
+
+Make sure you have:
+
+* Python **3.9+**
+* Node.js **18+**
+* MongoDB (local or Atlas)
+* Git
 
 ---
 
@@ -62,149 +90,180 @@ fake-financial-news-prediction/
 
 ### 🔽 1. Clone Repository
 
+```bash
 git clone https://github.com/Suresh-Nagvanshi/fake-financial-news-prediction.git
 cd fake-financial-news-prediction
+```
 
 ---
 
-### 🐍 2. Setup Backend
+## 🐍 2. Backend Setup
 
+```bash
 python -m venv venv
-venv\Scripts\activate      (Windows)
-
-# source venv/bin/activate (Mac/Linux)
+venv\Scripts\activate   # Windows
+# source venv/bin/activate  # Mac/Linux
 
 pip install -r backend/requirements.txt
+```
 
 ---
 
-### 📦 Required Python Packages
+## 🔑 3. Environment Variables
 
-pip install fastapi uvicorn pandas scikit-learn joblib
-pip install transformers datasets torch accelerate
+Create a `.env` file inside `backend/`:
+
+```
+MODEL_PATH=backend/models/distilbert_model
+MONGO_URI=mongodb://localhost:27017/
+DB_NAME=fake_news_db
+PORT=8000
+```
 
 ---
 
-### 🤖 3. Train DistilBERT Model
+## 🤖 4. Model Setup
 
+### Option A: Download Pre-trained Model
+
+👉 Download from Google Drive:
+https://drive.google.com/drive/folders/1p5mun8MS3irGwqjEFG55M5sjXNGejIi4
+
+Place it in:
+
+```
+backend/models/distilbert_model/
+```
+
+---
+
+### Required Files
+
+```
+config.json
+model.safetensors
+tokenizer.json
+tokenizer_config.json
+vocab.txt
+special_tokens_map.json
+```
+
+---
+
+### Option B: Train Model Yourself
+
+```bash
 python backend/ml/distilbert_trainer.py
-
-👉 Model will be saved at:
-D:/distilbert_model
+```
 
 ---
 
-## ☁️ Model Download (Google Drive)
+## 🚀 5. Start Backend
 
-Due to size limitations, the trained DistilBERT model is NOT included in this repository.
-
-👉 Download from:
-(https://drive.google.com/drive/folders/1p5mun8MS3irGwqjEFG55M5sjXNGejIi4?usp=sharing)
-
----
-
-### 📥 Steps to Use the Model
-
-1. Download the model folder
-2. Extract it
-3. Place it inside:
-
-backend/models/distilbert_model/
-
----
-
-### 📂 Required Folder Structure
-
-backend/models/distilbert_model/
-
-Must contain:
-
-* config.json
-* model.safetensors
-* tokenizer.json
-* tokenizer_config.json
-* vocab.txt
-* special_tokens_map.json
-
----
-
-### ⚠️ Important
-
-* Folder name must be exactly: distilbert_model
-* If path is different → update MODEL_PATH in backend/main.py
-
----
-
-### 🚫 Why Model is Not Included?
-
-* Exceeds GitHub size limits
-* Keeps repo lightweight
-* Faster cloning
-
----
-
-### 🚀 4. Start Backend
-
+```bash
 python -m uvicorn backend.main:app --reload
+```
 
 Open:
-http://127.0.0.1:8000
-http://127.0.0.1:8000/docs
+
+* API: http://127.0.0.1:8000
+* Docs: http://127.0.0.1:8000/docs
 
 ---
 
-### 🌐 5. Start Frontend
+## 🌐 6. Frontend Setup
 
+```bash
 cd frontend
 npm install
 npm run dev
+```
 
 Open:
+
+```
 http://localhost:5173
+```
+
+---
+
+## 🔐 Authentication Flow
+
+* Register new user
+* Login with credentials
+* Redirect to Dashboard
+* Protected routes enabled
+* Logout clears session
+
+---
+
+## 📊 Dashboard Features
+
+* Enter financial news text
+* Get:
+
+  * Credibility (Real/Fake)
+  * Confidence %
+  * Sentiment
+* View previous search history (MongoDB)
 
 ---
 
 ## 🔮 API Example
 
-Request:
+### Request
 
+```json
 {
-"text": "Stock market crashed due to fraud allegations"
+  "text": "Stock market crashed due to fraud allegations",
+  "email": "user@email.com"
 }
+```
 
-Response:
+### Response
 
+```json
 {
-"prediction": "Fake",
-"confidence": "96.07%"
+  "credibility": "Fake",
+  "confidence": "96.07%",
+  "sentiment": "NEGATIVE"
 }
+```
 
 ---
 
 ## 🧠 Model Details
 
-* Model: distilbert-base-uncased
+* Model: `distilbert-base-uncased`
 * Task: Binary classification (Fake / Real)
 * Max input length: 128 tokens
-* Output: Label + confidence score
+* Output: Label + confidence + sentiment
+
+⚠️ **Note:**
+The model predicts *credibility*, not factual truth. It does not verify real-world events.
 
 ---
 
-## 🚫 Files Not Included in Git
+## 🚫 Files Ignored
 
-* datasets (.csv)
-* trained models (.safetensors, .pt)
-* virtual environments
+* `.env`
+* `node_modules/`
+* `venv/`
+* `backend/models/`
+* datasets (`.csv`)
+* model files (`.pt`, `.bin`, `.safetensors`)
 
 ---
 
 ## 🚀 Future Improvements
 
-* MongoDB caching
-* Authentication
-* UI enhancements
-* Explainable AI
-* Live financial APIs
+* 🔐 JWT Authentication (secure APIs)
+* 🧠 Explainable AI (why prediction)
+* 📊 Analytics dashboard
+* 🌐 Live financial news APIs
+* ⚡ Redis caching
+* 🔍 Duplicate detection
+* 📱 Mobile responsiveness
 
 ---
 
@@ -213,21 +272,24 @@ Response:
 * ✔ Full-stack AI application
 * ✔ Transformer-based NLP model
 * ✔ Real-time prediction system
+* ✔ Authentication + protected routes
+* ✔ MongoDB integration
 * ✔ Scalable architecture
-* ✔ Industry-level project
 
 ---
 
-## 👨‍💻 Author
+## 👨‍💻 Authors
 
-Suresh Nagvanshi
-Nihal Panwar
-Faraz Ahmed
-Astha Shukla
-Tisha Chhabra
+* Suresh Nagvanshi
+* Nihal Panwar
+* Faraz Ahmed
+* Astha Shukla
+* Tisha Chhabra
 
 ---
 
 ## ⭐ Support
 
-If you like this project, give it a ⭐ on GitHub!
+If you found this project useful, consider giving it a ⭐ on GitHub!
+
+---
