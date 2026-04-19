@@ -26,7 +26,10 @@ load_dotenv()
 app = FastAPI(
     title="Financial News Credibility API",
     description="Lightweight version (ML disabled for deployment)",
-    version="8.0.0"
+    version="8.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json"
 )
 
 app.add_middleware(
