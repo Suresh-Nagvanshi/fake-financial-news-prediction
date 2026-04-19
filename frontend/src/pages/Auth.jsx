@@ -17,7 +17,7 @@ function Auth() {
 
     try {
       const response = await fetch(
-        `http://localhost:8000/${isLogin ? "login" : "register"}`,
+        `https://finverify-backend.onrender.com/${isLogin ? "login" : "register"}`,
         {
           method: "POST",
           headers: {

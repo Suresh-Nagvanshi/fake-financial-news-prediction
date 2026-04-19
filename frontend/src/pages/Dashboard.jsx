@@ -8,7 +8,7 @@ function Dashboard() {
   const email = localStorage.getItem("userEmail");
 
   const handleCheck = async () => {
-    const res = await fetch("http://localhost:8000/predict", {
+    const res = await fetch("https://finverify-backend.onrender.com/predict", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -23,7 +23,7 @@ function Dashboard() {
   };
 
   const fetchHistory = async () => {
-    const res = await fetch(`http://localhost:8000/history/${email}`);
+    const res = await fetch(`https://finverify-backend.onrender.com/history/${email}`);
     const data = await res.json();
     setHistory(data);
   };
@@ -61,7 +61,7 @@ function Dashboard() {
       {/* Result */}
       {result && (
         <div className="mt-6 p-4 bg-card rounded-xl">
-          <p>Prediction: {result.credibility}</p>
+          <p>Prediction: {result.prediction}</p>
           <p>Confidence: {result.confidence}</p>
           <p>Sentiment: {result.sentiment}</p>
         </div>
