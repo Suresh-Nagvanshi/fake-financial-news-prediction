@@ -11,9 +11,9 @@ from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError, InvalidHash
 
 # DB
-from backend.config.db import contact_collection, user_collection, history_collection
-from backend.model.contact import Contact
-from backend.model.user import UserRegister, UserLogin
+from config.db import contact_collection, user_collection, history_collection
+from model.contact import Contact
+from model.user import UserRegister, UserLogin
 
 # =========================
 # ENV SETUP
