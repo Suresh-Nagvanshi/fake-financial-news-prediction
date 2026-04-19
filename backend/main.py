@@ -2,7 +2,6 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional
 from pydantic import BaseModel
-import os
 from dotenv import load_dotenv
 from datetime import datetime
 
@@ -10,10 +9,15 @@ from datetime import datetime
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError, InvalidHash
 
-# DB
-from config.db import contact_collection, user_collection, history_collection
-from model.contact import Contact
-from model.user import UserRegister, UserLogin
+# DB IMPORT (Dual environment support)
+try:
+    from config.db import contact_collection, user_collection, history_collection
+    from model.contact import Contact
+    from model.user import UserRegister, UserLogin
+except ModuleNotFoundError:
+    from backend.config.db import contact_collection, user_collection, history_collection
+    from backend.model.contact import Contact
+    from backend.model.user import UserRegister, UserLogin
 
 # =========================
 # ENV SETUP
@@ -25,20 +29,17 @@ load_dotenv()
 # =========================
 app = FastAPI(
     title="Financial News Credibility API",
-    description="Lightweight version (ML disabled for deployment)",
-    version="8.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc",
-    openapi_url="/openapi.json"
+    description="Lightweight deployment version",
+    version="10.0.0"
 )
 
 # =========================
-# ✅ CORS CONFIG (IMPORTANT)
+# CORS CONFIG
 # =========================
 origins = [
-    "http://localhost:3000",   # local frontend
-    "http://localhost:5173",   # vite frontend
-    "*"  # keep for now (we will restrict later after deploy)
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "https://fake-financial-news-prediction.vercel.app"
 ]
 
 app.add_middleware(
@@ -65,14 +66,6 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
         return False
 
 # =========================
-# ⚠️ MODEL DISABLED
-# =========================
-classifier = None
-sentiment_analyzer = None
-
-print("⚠️ ML models disabled for deployment (low RAM mode)")
-
-# =========================
 # REQUEST MODEL
 # =========================
 class NewsRequest(BaseModel):
@@ -84,7 +77,7 @@ class NewsRequest(BaseModel):
 # =========================
 @app.get("/")
 async def root():
-    return {"message": "API running 🚀", "mode": "lightweight"}
+    return {"message": "API running 🚀"}
 
 # =========================
 # PREDICT API
@@ -93,42 +86,45 @@ async def root():
 async def predict_news(request: NewsRequest):
     try:
         text = request.text[:512]
-        email = request.email
 
-        text_lower = text.lower()
+        if not text.strip():
+            raise HTTPException(status_code=400, detail="Text cannot be empty")
+
+        email = request.email
 
         fake_keywords = [
             "secretly", "overnight", "guaranteed",
             "no risk", "double money", "100% return"
         ]
 
-        credibility = "Fake" if any(word in text_lower for word in fake_keywords) else "Real"
-        confidence = 85.0 if credibility == "Fake" else 75.0
+        credibility = "Fake" if any(k in text.lower() for k in fake_keywords) else "Real"
+
+        confidence = 85 if credibility == "Fake" else 75
         sentiment = "NEGATIVE" if credibility == "Fake" else "POSITIVE"
 
-        # SAVE HISTORY
+        result = {
+            "prediction": credibility,
+            "confidence": confidence,
+            "sentiment": sentiment
+        }
+
         if email:
             history_collection.insert_one({
                 "email": email,
                 "text": text,
-                "prediction": credibility,
-                "confidence": f"{confidence}%",
-                "sentiment": sentiment,
+                **result,
                 "created_at": datetime.utcnow()
             })
 
-        return {
-            "prediction": credibility,
-            "confidence": confidence,
-            "sentiment": sentiment,
-            "text_analyzed": text
-        }
+        return result
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 # =========================
-# GET HISTORY
+# HISTORY API
 # =========================
 @app.get("/history/{email}")
 async def get_history(email: str):
@@ -160,22 +156,20 @@ async def submit_contact(contact: Contact):
 @app.post("/register")
 async def register_user(user: UserRegister):
     try:
-        existing = user_collection.find_one({"email": user.email})
-
-        if existing:
+        if user_collection.find_one({"email": user.email}):
             raise HTTPException(status_code=400, detail="User already exists")
-
-        hashed_password = hash_password(user.password)
 
         user_collection.insert_one({
             "name": user.name,
             "email": user.email,
-            "password": hashed_password,
+            "password": hash_password(user.password),
             "created_at": datetime.utcnow()
         })
 
         return {"message": "User registered successfully"}
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -201,6 +195,8 @@ async def login_user(user: UserLogin):
             }
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -209,7 +205,4 @@ async def login_user(user: UserLogin):
 # =========================
 @app.get("/health")
 async def health():
-    return {
-        "status": "OK",
-        "model_loaded": False
-    }
+    return {"status": "OK"}
