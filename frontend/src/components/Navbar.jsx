@@ -1,13 +1,17 @@
 import { useState} from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
 
 function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
-  const userEmail = localStorage.getItem("userEmail");
+  const { user, logout, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
 
   const handleLogout = () => {
-    localStorage.removeItem("userEmail");
-    window.location.href = "/";
+    if (window.confirm("Are you sure you want to logout?")) {
+      logout();
+      navigate("/");
+    }
   };
 
   const linkClass = ({ isActive }) =>
@@ -39,13 +43,13 @@ function Navbar() {
           <NavLink to="/about" className={linkClass}>About</NavLink>
           <NavLink to="/contact" className={linkClass}>Contact</NavLink>
 
-          {userEmail ? (
+          {isAuthenticated ? (
             <>
               <NavLink to="/dashboard" className={linkClass}>Dashboard</NavLink>
 
               {/* User Email */}
               <span className="text-xs text-gray-400 hidden lg:block">
-                {userEmail}
+                {user?.email}
               </span>
 
               {/* Logout */}
@@ -79,7 +83,7 @@ function Navbar() {
           <NavLink to="/about" className={linkClass}>About</NavLink>
           <NavLink to="/contact" className={linkClass}>Contact</NavLink>
 
-          {userEmail ? (
+          {isAuthenticated ? (
             <>
               <NavLink to="/dashboard" className={linkClass}>Dashboard</NavLink>
               <button onClick={handleLogout} className="text-primary">

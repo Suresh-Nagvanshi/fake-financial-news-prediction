@@ -1,40 +1,84 @@
 import React, { useState, useEffect } from "react";
+import { useAuth } from "../contexts/AuthContext";
+import { buildUrl, apiRequest } from "../config/api";
 
 function Dashboard() {
   const [text, setText] = useState("");
   const [result, setResult] = useState(null);
   const [history, setHistory] = useState([]);
-
-  const email = localStorage.getItem("userEmail");
+  const [loading, setLoading] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const { user } = useAuth();
 
   const handleCheck = async () => {
-    const res = await fetch("https://finverify-backend.onrender.com/predict", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ text, email }),
-    });
+    if (!user?.email) {
+      alert("Please login first to use this feature");
+      return;
+    }
 
-    const data = await res.json();
-    setResult(data);
+    if (!text.trim()) {
+      alert("Please enter some text to analyze");
+      return;
+    }
 
-    fetchHistory();
+    setLoading(true);
+    try {
+      const res = await apiRequest(buildUrl('/predict'), {
+        method: "POST",
+        body: JSON.stringify({ text: text.trim(), email: user.email }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.detail || `HTTP ${res.status}: ${res.statusText}`);
+      }
+
+      const data = await res.json();
+      setResult(data);
+      fetchHistory();
+    } catch (error) {
+      console.error("Prediction error:", error);
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        alert("Network error: Please check your internet connection");
+      } else {
+        alert("Failed to analyze text: " + error.message);
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const fetchHistory = async () => {
-    const res = await fetch(`https://finverify-backend.onrender.com/history/${email}`);
-    const data = await res.json();
-    setHistory(data);
+    if (!user?.email) return;
+
+    setHistoryLoading(true);
+    try {
+      const res = await apiRequest(buildUrl('/history'), {
+        method: "POST",
+        body: JSON.stringify({ email: user.email }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.detail || `HTTP ${res.status}: ${res.statusText}`);
+      }
+
+      const data = await res.json();
+      setHistory(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("History fetch error:", error);
+      setHistory([]);
+      // Don't show alert for history errors to avoid spam
+    } finally {
+      setHistoryLoading(false);
+    }
   };
 
   useEffect(() => {
-    if (!email) {
-      window.location.href = "/auth";
-    } else {
+    if (user?.email) {
       fetchHistory();
     }
-  }, []);
+  }, [user]);
 
   return (
     <div className="min-h-screen p-6 text-white bg-background">
@@ -51,10 +95,17 @@ function Dashboard() {
       <div className="flex justify-center mt-4">
         <button
           onClick={handleCheck}
-          disabled={!text}
-          className="bg-primary px-8 py-3 rounded-xl font-semibold disabled:opacity-50"
+          disabled={!text || loading}
+          className="bg-primary px-8 py-3 rounded-xl font-semibold disabled:opacity-50 flex items-center gap-2"
         >
-          {text ? "Check" : "Enter text"}
+          {loading ? (
+            <>
+              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              Analyzing...
+            </>
+          ) : (
+            text ? "Check" : "Enter text"
+          )}
         </button>
       </div>
 
@@ -70,8 +121,12 @@ function Dashboard() {
       {/* History */}
       <h2 className="text-2xl mt-8 mb-4">History</h2>
 
-      {/* 🔥 EMPTY STATE */}
-      {history.length === 0 ? (
+      {historyLoading ? (
+        <div className="text-center text-gray-400 mt-6">
+          <span className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin inline-block" />
+          <p className="mt-2">Loading history...</p>
+        </div>
+      ) : history.length === 0 ? (
         <div className="text-center text-gray-400 mt-6">
           <p>No history yet</p>
           <p className="text-sm mt-2">

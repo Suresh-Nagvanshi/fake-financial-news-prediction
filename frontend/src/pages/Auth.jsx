@@ -1,53 +1,109 @@
 import React, { useState } from "react";
-
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
+import { buildUrl, apiRequest } from "../config/api";
 
 function Auth() {
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [lastAttempt, setLastAttempt] = useState(0);
+  const { login } = useAuth();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Rate limiting: prevent spam attempts (5 second cooldown)
+    const now = Date.now();
+    if (now - lastAttempt < 5000) {
+      alert("Please wait 5 seconds before trying again");
+      return;
+    }
+    setLastAttempt(now);
+
     setLoading(true);
 
+    const email = e.target.email.value.trim();
+    const password = e.target.password.value;
+    const name = isLogin ? null : e.target.name?.value.trim();
+
+    // Client-side validation
+    if (!email || !password) {
+      alert("Please fill in all required fields");
+      setLoading(false);
+      return;
+    }
+
+    if (!email.includes('@') || email.length < 5) {
+      alert("Please enter a valid email address");
+      setLoading(false);
+      return;
+    }
+
+    if (!isLogin && (!name || name.length < 2)) {
+      alert("Please enter a valid name (at least 2 characters)");
+      setLoading(false);
+      return;
+    }
+
+    if (password.length < 6) {
+      alert("Password must be at least 6 characters long");
+      setLoading(false);
+      return;
+    }
+
     const formData = {
-      email: e.target.email.value,
-      password: e.target.password.value,
-      ...(isLogin ? {} : { name: e.target.name.value })
+      email,
+      password,
+      ...(isLogin ? {} : { name }),
     };
 
     try {
-      const response = await fetch(
-        `https://finverify-backend.onrender.com/${isLogin ? "login" : "register"}`,
+      const response = await apiRequest(
+        buildUrl(isLogin ? '/login' : '/register'),
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
           body: JSON.stringify(formData),
         }
       );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || `HTTP ${response.status}: ${response.statusText}`);
+      }
 
       const data = await response.json();
 
       if (response.ok) {
         alert(data.message);
 
-        // 🔥 STORE USER EMAIL
-        localStorage.setItem("userEmail", formData.email);
-
-        // 🔥 REDIRECT AFTER LOGIN
         if (isLogin) {
-          window.location.href = "/dashboard";
+          // Validate user data before login
+          if (data.user?.email && data.user?.name) {
+            const loginSuccess = login(data.user);
+            if (loginSuccess) {
+              navigate("/dashboard");
+            } else {
+              alert("Login failed: Invalid user data received");
+            }
+          } else {
+            alert("Login failed: Invalid user data received from server");
+          }
+        } else {
+          // Registration success
+          setIsLogin(true);
+          alert("Registration successful! Please login with your credentials.");
         }
 
         e.target.reset();
-
-      } else {
-        alert(data.detail || "An error occurred");
       }
-
     } catch (error) {
-      alert("Network error: " + error.message);
+      console.error("Auth error:", error);
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        alert("Network error: Please check your internet connection");
+      } else {
+        alert("Authentication failed: " + error.message);
+      }
     } finally {
       setLoading(false);
     }
@@ -55,9 +111,8 @@ function Auth() {
 
   return (
     <main className="min-h-screen bg-background flex items-center justify-center px-6">
-      
       <div className="relative z-10 w-full max-w-md bg-card/40 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-[0_20px_40px_rgba(0,0,0,0.4)]">
-        
+
         <h2 className="text-3xl font-bold text-center text-white mb-2">
           {isLogin ? "Welcome Back" : "Create Account"}
         </h2>
@@ -97,7 +152,7 @@ function Auth() {
           <button
             type="submit"
             disabled={loading}
-            className="mt-2 bg-primary hover:bg-orange-500 text-white py-3 rounded-xl font-bold transition-all"
+            className="mt-2 bg-primary hover:bg-orange-500 text-white py-3 rounded-xl font-bold transition-all disabled:opacity-50"
           >
             {loading
               ? "Processing..."
