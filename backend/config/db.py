@@ -2,6 +2,7 @@ import os
 from pymongo import MongoClient
 from dotenv import load_dotenv
 from pathlib import Path
+from backend.model.contact import Contact
 
 # 🔥 Load .env from ROOT (IMPORTANT FIX)
 BASE_DIR = Path(__file__).resolve().parents[2]
@@ -20,5 +21,7 @@ client = MongoClient(MONGO_URI)
 db = client[DB_NAME]
 
 # Collection
-from backend.model.contact import Contact
+
 contact_collection = db["contacts"]
+user_collection = db["users"]
+history_collection = db["history"]

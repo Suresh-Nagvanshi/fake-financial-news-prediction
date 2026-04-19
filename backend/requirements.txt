@@ -17,3 +17,5 @@ pydantic
 uvicorn
 python-dotenv
 email-validator
+argon2-cffi
+python-jose[cryptography]
