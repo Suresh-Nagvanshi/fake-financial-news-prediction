@@ -90,13 +90,27 @@ class NewsRequest(BaseModel):
 # =========================
 @lru_cache(maxsize=100)
 def cached_prediction(text: str):
-    response = requests.post(
-        MODEL_URL,
-        headers=headers,
-        json={"inputs": text},
-        timeout=6
-    )
-    return response.json()
+    try:
+        response = requests.post(
+            MODEL_URL,
+            headers=headers,
+            json={"inputs": text},
+            timeout=6
+        )
+        response.raise_for_status()
+        return response.json()
+
+    except requests.exceptions.RequestException as exc:
+        status = getattr(exc.response, "status_code", None)
+        body = exc.response.text if getattr(exc, "response", None) is not None else str(exc)
+        print("🔥 HF request failed:", exc, "status_code:", status)
+        print("🔥 HF response body:", body)
+        return {"error": "Hugging Face request failed", "details": str(exc)}
+
+    except ValueError as exc:
+        print("🔥 HF JSON decode failed:", exc)
+        print("🔥 HF response body:", response.text if 'response' in locals() else "<no response>")
+        return {"error": "Invalid response from Hugging Face", "details": str(exc)}
 
 # =========================
 # 🔥 STRONG RULE ENGINE
