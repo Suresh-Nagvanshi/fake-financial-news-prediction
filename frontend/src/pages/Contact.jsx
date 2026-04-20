@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { buildUrl, apiRequest } from "../config/api";
 
 function Contact() {
   const [submitted, setSubmitted] = useState(false);
@@ -24,12 +25,9 @@ function Contact() {
     };
 
     try {
-      const res = await fetch("https://finverify-backend.onrender.com/contact", {
+      const res = await apiRequest(buildUrl("/contact"), {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(formData),
       });
 
       if (res.ok) {

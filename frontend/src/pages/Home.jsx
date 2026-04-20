@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { buildUrl, apiRequest } from "../config/api";
 
 const SAMPLE_NEWS = [
   {
@@ -32,9 +33,8 @@ function Home() {
     setResult(null);
     setLoading(true);
     try {
-      const response = await fetch("https://finverify-backend.onrender.com/predict", {
+      const response = await apiRequest(buildUrl("/predict"), {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: newsText }),
       });
       if (!response.ok)

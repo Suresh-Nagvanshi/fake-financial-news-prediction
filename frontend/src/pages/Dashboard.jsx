@@ -53,9 +53,8 @@ function Dashboard() {
 
     setHistoryLoading(true);
     try {
-      const res = await apiRequest(buildUrl('/history'), {
-        method: "POST",
-        body: JSON.stringify({ email: user.email }),
+      const res = await apiRequest(buildUrl(`/history/${encodeURIComponent(user.email)}`), {
+        method: "GET",
       });
 
       if (!res.ok) {
