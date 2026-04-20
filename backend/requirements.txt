@@ -1,17 +1,3 @@
-# Core Data & ML
-numpy
-pandas
-scikit-learn
-nltk
-joblib
-
-# Deep Learning
-torch
-transformers
-huggingface_hub
-datasets
-accelerate
-
 # Backend API
 fastapi
 pydantic

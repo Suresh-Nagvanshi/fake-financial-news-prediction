@@ -1,18 +1,17 @@
 from datetime import datetime
-from functools import lru_cache
+import json
 import os
 from pathlib import Path
 import re
 from typing import Optional
+from urllib import error, request
 
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHash, VerifyMismatchError
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from huggingface_hub import snapshot_download
 from pydantic import BaseModel
-from transformers import pipeline
 
 try:
     from config.db import contact_collection, history_collection, user_collection
@@ -27,34 +26,12 @@ except ModuleNotFoundError:
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent
-PROJECT_DIR = BASE_DIR.parent
-DEFAULT_MODEL_REPO = "SureshNagvanshi/finverify-model"
-
-
-def resolve_model_path() -> Path:
-    raw_model_path = os.getenv("MODEL_PATH")
-    if not raw_model_path:
-        return BASE_DIR / "models" / "distilbert_model"
-
-    candidate = Path(raw_model_path).expanduser()
-    if candidate.is_absolute():
-        return candidate
-
-    backend_relative = (BASE_DIR / candidate).resolve()
-    if backend_relative.exists():
-        return backend_relative
-
-    return (PROJECT_DIR / candidate).resolve()
-
-
-MODEL_PATH = resolve_model_path()
-MODEL_REPO_ID = os.getenv("MODEL_REPO_ID", DEFAULT_MODEL_REPO)
-HF_DOWNLOAD_TOKEN = os.getenv("HF_API_KEY") or os.getenv("HF_TOKEN")
-PRELOAD_MODEL = os.getenv("PRELOAD_MODEL", "false").strip().lower() == "true"
+DEFAULT_INFERENCE_URL = "https://sureshnagvanshi-finverify-inference.hf.space/predict"
+INFERENCE_API_URL = os.getenv("INFERENCE_API_URL", DEFAULT_INFERENCE_URL).strip()
 
 app = FastAPI(
     title="Financial News Credibility API",
-    version="16.1.0",
+    version="17.0.0",
 )
 
 origins = [
@@ -79,16 +56,6 @@ class NewsRequest(BaseModel):
     email: Optional[str] = None
 
 
-def model_files_present(path: Path) -> bool:
-    required_files = [
-        "config.json",
-        "tokenizer.json",
-        "tokenizer_config.json",
-    ]
-    weights_present = (path / "model.safetensors").exists() or (path / "pytorch_model.bin").exists()
-    return path.exists() and all((path / file_name).exists() for file_name in required_files) and weights_present
-
-
 def hash_password(password: str):
     return ph.hash(password)
 
@@ -101,21 +68,35 @@ def verify_password(plain_password: str, hashed_password: str):
         return False
 
 
-@lru_cache(maxsize=1)
-def get_classifier():
-    ensure_model_available()
-
-    return pipeline(
-        "text-classification",
-        model=str(MODEL_PATH),
-        tokenizer=str(MODEL_PATH),
+def call_inference_api(text: str):
+    payload = json.dumps({"text": text}).encode("utf-8")
+    api_request = request.Request(
+        INFERENCE_API_URL,
+        data=payload,
+        headers={"Content-Type": "application/json"},
+        method="POST",
     )
 
-
-@lru_cache(maxsize=100)
-def cached_prediction(text: str):
-    classifier = get_classifier()
-    return classifier(text, truncation=True, max_length=128)
+    try:
+        with request.urlopen(api_request, timeout=120) as response:
+            body = response.read().decode("utf-8")
+            return json.loads(body)
+    except error.HTTPError as exc:
+        details = exc.read().decode("utf-8", errors="replace")
+        raise HTTPException(
+            status_code=502,
+            detail=f"Inference API returned {exc.code}: {details}",
+        ) from exc
+    except error.URLError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Unable to reach inference API: {exc.reason}",
+        ) from exc
+    except json.JSONDecodeError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Inference API returned invalid JSON: {exc}",
+        ) from exc
 
 
 def rule_based_check(text: str):
@@ -147,56 +128,15 @@ def rule_based_check(text: str):
     return None
 
 
-def map_label_to_prediction(label: str) -> str:
-    normalized = label.strip().upper()
-
-    if normalized in {"LABEL_0", "0", "FAKE"}:
-        return "Fake"
-    if normalized in {"LABEL_1", "1", "REAL"}:
-        return "Real"
-
-    return "Fake" if "FAKE" in normalized else "Real"
-
-
-def ensure_model_available() -> Path:
-    if model_files_present(MODEL_PATH):
-        return MODEL_PATH
-
-    MODEL_PATH.mkdir(parents=True, exist_ok=True)
-    print(f"Model files not found at {MODEL_PATH}. Downloading from {MODEL_REPO_ID}...")
-
-    snapshot_download(
-        repo_id=MODEL_REPO_ID,
-        repo_type="model",
-        local_dir=str(MODEL_PATH),
-        local_dir_use_symlinks=False,
-        token=HF_DOWNLOAD_TOKEN,
-    )
-
-    if not model_files_present(MODEL_PATH):
-        raise FileNotFoundError(
-            f"Model download completed, but required files are still missing at {MODEL_PATH}"
-        )
-
-    print(f"Model downloaded successfully to {MODEL_PATH}")
-    return MODEL_PATH
-
-
 @app.get("/")
 async def root():
     return {"message": "API running"}
 
 
-@app.on_event("startup")
-async def startup_event():
-    if PRELOAD_MODEL:
-        ensure_model_available()
-
-
 @app.post("/predict")
-async def predict_news(request: NewsRequest):
+async def predict_news(request_body: NewsRequest):
     try:
-        text = request.text[:512]
+        text = request_body.text[:512]
 
         if not text.strip():
             raise HTTPException(status_code=400, detail="Text cannot be empty")
@@ -213,10 +153,10 @@ async def predict_news(request: NewsRequest):
                 "sentiment": "NEGATIVE",
             }
 
-            if request.email:
+            if request_body.email:
                 history_collection.insert_one(
                     {
-                        "email": request.email,
+                        "email": request_body.email,
                         "text": text,
                         **output,
                         "created_at": datetime.utcnow(),
@@ -225,30 +165,13 @@ async def predict_news(request: NewsRequest):
 
             return output
 
-        result = cached_prediction(text)
-        print("LOCAL MODEL RESPONSE:", result)
+        output = call_inference_api(text)
+        print("INFERENCE API RESPONSE:", output)
 
-        if not result:
-            return {
-                "prediction": "Error",
-                "confidence": 0,
-                "sentiment": "N/A",
-            }
-
-        top_result = result[0]
-        label = top_result.get("label", "")
-        score = float(top_result.get("score", 0))
-
-        output = {
-            "prediction": map_label_to_prediction(label),
-            "confidence": round(score * 100, 2),
-            "sentiment": "N/A",
-        }
-
-        if request.email:
+        if request_body.email:
             history_collection.insert_one(
                 {
-                    "email": request.email,
+                    "email": request_body.email,
                     "text": text,
                     **output,
                     "created_at": datetime.utcnow(),
@@ -317,9 +240,5 @@ async def login_user(user: UserLogin):
 async def health():
     return {
         "status": "OK",
-        "model_path": str(MODEL_PATH),
-        "model_repo_id": MODEL_REPO_ID,
-        "preload_model": PRELOAD_MODEL,
-        "model_files_present": model_files_present(MODEL_PATH),
-        "model_loaded": get_classifier.cache_info().currsize > 0,
+        "inference_api_url": INFERENCE_API_URL,
     }
