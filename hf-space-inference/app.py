@@ -1,68 +1,44 @@
 from functools import lru_cache
 from pathlib import Path
+import math
 
+import joblib
 from fastapi import FastAPI, HTTPException
-from huggingface_hub import snapshot_download
 from pydantic import BaseModel
-from transformers import pipeline
 
-MODEL_REPO_ID = "SureshNagvanshi/finverify-model"
-MODEL_DIR = Path("./model")
+MODEL_DIR = Path("./")
+MODEL_PATH = MODEL_DIR / "model.pkl"
+VECTORIZER_PATH = MODEL_DIR / "vectorizer.pkl"
 
 
 class NewsRequest(BaseModel):
     text: str
 
 
-def model_files_present(path: Path) -> bool:
-    required_files = [
-        "config.json",
-        "tokenizer.json",
-        "tokenizer_config.json",
-    ]
-    has_weights = (path / "model.safetensors").exists() or (path / "pytorch_model.bin").exists()
-    return path.exists() and all((path / name).exists() for name in required_files) and has_weights
-
-
-def ensure_model_available() -> Path:
-    if model_files_present(MODEL_DIR):
-        return MODEL_DIR
-
-    MODEL_DIR.mkdir(parents=True, exist_ok=True)
-
-    snapshot_download(
-        repo_id=MODEL_REPO_ID,
-        repo_type="model",
-        local_dir=str(MODEL_DIR),
-        local_dir_use_symlinks=False,
-    )
-
-    if not model_files_present(MODEL_DIR):
-        raise FileNotFoundError("Model files are missing after download")
-
-    return MODEL_DIR
+def model_files_present() -> bool:
+    return MODEL_PATH.exists() and VECTORIZER_PATH.exists()
 
 
 @lru_cache(maxsize=1)
-def get_classifier():
-    ensure_model_available()
-    return pipeline(
-        "text-classification",
-        model=str(MODEL_DIR),
-        tokenizer=str(MODEL_DIR),
-    )
+def get_model_bundle():
+    if not model_files_present():
+        raise FileNotFoundError("model.pkl or vectorizer.pkl is missing from the Space")
+
+    model = joblib.load(MODEL_PATH)
+    vectorizer = joblib.load(VECTORIZER_PATH)
+    return model, vectorizer
 
 
-def map_label(label: str) -> str:
-    normalized = label.strip().upper()
-    if normalized in {"LABEL_0", "0", "FAKE"}:
-        return "Fake"
-    if normalized in {"LABEL_1", "1", "REAL"}:
-        return "Real"
-    return "Fake" if "FAKE" in normalized else "Real"
+def map_label(label: int) -> str:
+    return "Fake" if int(label) == 0 else "Real"
 
 
-app = FastAPI(title="Finverify Inference API", version="1.0.0")
+def score_to_confidence(raw_score: float) -> float:
+    probability = 1 / (1 + math.exp(-abs(raw_score)))
+    return round(probability * 100, 2)
+
+
+app = FastAPI(title="Finverify Inference API", version="2.0.0")
 
 
 @app.get("/")
@@ -74,9 +50,9 @@ async def root():
 async def health():
     return {
         "status": "OK",
-        "model_repo_id": MODEL_REPO_ID,
-        "model_files_present": model_files_present(MODEL_DIR),
-        "model_loaded": get_classifier.cache_info().currsize > 0,
+        "model_files_present": model_files_present(),
+        "model_loaded": get_model_bundle.cache_info().currsize > 0,
+        "model_type": "tfidf-passive-aggressive",
     }
 
 
@@ -88,14 +64,19 @@ async def predict(request: NewsRequest):
         raise HTTPException(status_code=400, detail="Text cannot be empty")
 
     try:
-        result = get_classifier()(text, truncation=True, max_length=128)
-        top = result[0]
-        label = top.get("label", "")
-        score = float(top.get("score", 0))
+        model, vectorizer = get_model_bundle()
+        features = vectorizer.transform([text])
+        prediction = int(model.predict(features)[0])
+
+        if hasattr(model, "decision_function"):
+            raw_score = float(model.decision_function(features)[0])
+            confidence = score_to_confidence(raw_score)
+        else:
+            confidence = 75.0
 
         return {
-            "prediction": map_label(label),
-            "confidence": round(score * 100, 2),
+            "prediction": map_label(prediction),
+            "confidence": confidence,
             "sentiment": "N/A",
         }
     except Exception as exc:
