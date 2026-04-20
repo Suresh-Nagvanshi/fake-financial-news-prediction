@@ -7,7 +7,7 @@ export const API_CONFIG = {
     PREDICT: '/predict',
     HISTORY: '/history',
   },
-  TIMEOUT: 10000, // 10 seconds
+  TIMEOUT: 120000, // 120 seconds for cold starts on hosted services
 };
 
 // Helper function to build full URLs
@@ -35,7 +35,7 @@ export const apiRequest = async (url, options = {}) => {
   } catch (error) {
     clearTimeout(timeoutId);
     if (error.name === 'AbortError') {
-      throw new Error('Request timeout - please try again');
+      throw new Error('Request timed out while the hosted services were waking up. Please try again.');
     }
     throw error;
   }
