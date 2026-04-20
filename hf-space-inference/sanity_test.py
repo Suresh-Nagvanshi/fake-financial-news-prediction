@@ -2,7 +2,6 @@ import json
 from collections import Counter
 from urllib import request
 
-
 INFERENCE_URL = "https://sureshnagvanshi-finverify-inference.hf.space/predict"
 
 TEST_CASES = [
@@ -32,7 +31,6 @@ TEST_CASES = [
     },
 ]
 
-
 def predict(text: str):
     payload = json.dumps({"text": text}).encode("utf-8")
     api_request = request.Request(
@@ -43,7 +41,6 @@ def predict(text: str):
     )
     with request.urlopen(api_request, timeout=120) as response:
         return json.loads(response.read().decode("utf-8"))
-
 
 def main():
     matches = 0
@@ -67,7 +64,6 @@ def main():
     print(f"Accuracy: {matches}/{len(TEST_CASES)}")
     print(f"Expected labels: {dict(expected)}")
     print(f"Predicted labels: {dict(predicted)}")
-
 
 if __name__ == "__main__":
     main()
