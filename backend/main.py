@@ -50,10 +50,11 @@ def resolve_model_path() -> Path:
 MODEL_PATH = resolve_model_path()
 MODEL_REPO_ID = os.getenv("MODEL_REPO_ID", DEFAULT_MODEL_REPO)
 HF_DOWNLOAD_TOKEN = os.getenv("HF_API_KEY") or os.getenv("HF_TOKEN")
+PRELOAD_MODEL = os.getenv("PRELOAD_MODEL", "false").strip().lower() == "true"
 
 app = FastAPI(
     title="Financial News Credibility API",
-    version="16.0.0",
+    version="16.1.0",
 )
 
 origins = [
@@ -188,7 +189,8 @@ async def root():
 
 @app.on_event("startup")
 async def startup_event():
-    ensure_model_available()
+    if PRELOAD_MODEL:
+        ensure_model_available()
 
 
 @app.post("/predict")
@@ -317,6 +319,7 @@ async def health():
         "status": "OK",
         "model_path": str(MODEL_PATH),
         "model_repo_id": MODEL_REPO_ID,
+        "preload_model": PRELOAD_MODEL,
         "model_files_present": model_files_present(MODEL_PATH),
         "model_loaded": get_classifier.cache_info().currsize > 0,
     }
